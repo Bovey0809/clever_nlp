@@ -1,13 +1,13 @@
 from pandas.core.frame import DataFrame
-from transformers import BertTokenizer, BertModel
+from transformers.models.bert.modeling_bert import BertModel
+from transformers import BertTokenizer
 from sklearn.manifold import TSNE
 import torch
 import argparse
 import warnings
-import numpy as np
 from matplotlib import pyplot as plt
-import pandas as pd
-import random
+from datasets import load_dataset
+from model import CleverNLP
 
 warnings.filterwarnings('ignore')
 
@@ -52,11 +52,8 @@ def mean_pooling(model_output, attention_mask):
     return sum_embeddings / sum_mask
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--text", default="Replace me by any text you'd like.")
-    args = parser.parse_args()
-    text = args.text
+def demo(text):
+
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f"Input Text: {text} \n")
 
@@ -80,7 +77,30 @@ def main():
 
     # Draw tsne for testing.
     draw(embeddings, ids=tokens)
-    return embeddings
+
+
+def train():
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    net = CleverNLP().to(device)
+    optimizer = torch.optim.Adam(net.parameters(), lr=1e-2)
+    loss = net.forward("she feed the owl.", -2,
+                       "owe:a bird of prey with large round eyes.")
+    print(f'loss: {loss}')
+    loss.backward()
+    optimizer.step()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--text", default="Replace me by any text you'd like.")
+    args = parser.parse_args()
+    text = args.text
+    train()
+    raw_datasets = load_dataset("glue", "mrpc")
+    raw_datasets['train']
+
+    return
 
 
 if __name__ == "__main__":
