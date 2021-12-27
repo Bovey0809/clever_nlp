@@ -5,7 +5,7 @@
 
 ```mermaid
 graph LR
-letters --> Tokens --> embeddings --> Bert --> outputs --> TSNE
+letters --> Tokens --> embeddings --> TSNE
 outputs --> norm
 ```
 
