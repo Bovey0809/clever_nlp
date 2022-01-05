@@ -7,7 +7,7 @@ import argparse
 import warnings
 from matplotlib import pyplot as plt
 from datasets import load_dataset
-from model import CleverNLP
+from model import DictNet
 
 warnings.filterwarnings('ignore')
 
@@ -42,14 +42,7 @@ def draw_norm(embeddings):
     return norms
 
 
-def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[
-        0]  #First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(
-        token_embeddings.size()).float()
-    sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, -1)
-    sum_mask = torch.clamp(input_mask_expanded.sum(-1), min=1e-9)
-    return sum_embeddings / sum_mask
+
 
 
 def demo(text):
@@ -82,10 +75,10 @@ def demo(text):
 def train():
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    net = CleverNLP().to(device)
+    net = DictNet().to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-2)
     loss = net.forward("she feed the owl.", -2,
-                       "owe:a bird of prey with large round eyes.")
+                       "a bird of prey with large round eyes.")
     print(f'loss: {loss}')
     loss.backward()
     optimizer.step()
@@ -99,7 +92,6 @@ def main():
     train()
     raw_datasets = load_dataset("glue", "mrpc")
     raw_datasets['train']
-
     return
 
 
