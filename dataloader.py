@@ -29,19 +29,29 @@ def word_dict(data_dir="/diskb/houbowei/clever_nlp/core-wordnet.txt") -> dict:
     return wordnet
 
 
-def nltk_dataset(filepath='./wordnet_bert_common_words.csv'):
+def nltk_dataset(
+        filepath='/diskb/houbowei/clever_nlp/wordnet_bert_common_words.csv'):
     '''Read csv file and return nltk dataset.
     '''
     dataset = load_dataset('csv', data_files=filepath)
     return dataset
 
 
-def build_dataset(name='wordnet_core'):
+def build_dataset(range=(0, 1.233141)) -> tuple:
     """
     build_dataset build transformers tokenized dataset.
+            norms
+    count	14510.00000
+    mean	1.339519	
+    std	0.151899	
+    min	0.866191	
+    25%	1.233141	
+    50%	1.355623	
+    75%	1.452249	
+    max	1.823229
 
     Args:
-        name (str, optional): Defaults to 'wordnet_core', optional 'wordnet_nltk".
+        range: norm range for filtering.
 
     Raises:
         NotImplemented: only nltk and core dataset are supported.
@@ -49,47 +59,13 @@ def build_dataset(name='wordnet_core'):
     Returns:
         dataset: dataset from transformers.
     """
-
     checkpoint = "bert-base-uncased"
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-    if name == 'wordnet_core':
-        # Build Dataset
-
-        wordnet = word_dict()
-        words_wordnet = list(wordnet.keys())
-
-        words_bert = list(tokenizer.vocab.keys())
-        common_words = set(words_bert) & set(words_wordnet)
-        common_words_dict = {
-            k: v
-            for k, v in wordnet.items() if k in common_words
-        }
-        wordnet_series = pd.DataFrame(
-            {
-                'word': common_words_dict.keys(),
-                'explanation': common_words_dict.values()
-            },
-            index=None)
-        wordnet_series.to_csv("wordnet.csv", index=None)
-        wordnet_dataset = load_dataset('csv', data_files="wordnet.csv")
-
-        def tokenize_function(example):
-            res = tokenizer(example['explanation'], padding=True)
-            res['word_ids'] = tokenizer.convert_tokens_to_ids(example['word'])
-            return res
-
-        tokenized_dataset = wordnet_dataset.map(tokenize_function,
-                                                batched=True)
-        tokenized_dataset = tokenized_dataset.remove_columns(
-            ['explanation', 'word'])
-    elif name == "wordnet_nltk":
-        dataset = nltk_dataset()
-        tokenized_dataset = dataset.map(lambda x: tokenizer(x['definition']),
-                                        batched=True)
-        tokenized_dataset = tokenized_dataset.remove_columns(
-            ['definition', 'words', 'embeddings_ids', 'norms'])
-    else:
-        raise NotImplemented
-
+    dataset = nltk_dataset()
+    dataset = dataset.filter(lambda x: range[0] < x['norms'] < range[1])
+    tokenized_dataset = dataset.map(lambda x: tokenizer(x['definition']),
+                                    batched=True)
+    tokenized_dataset = tokenized_dataset.remove_columns(
+        ['definition', 'words', 'embeddings_ids', 'norms'])
     tokenized_dataset.set_format("torch")
     return tokenized_dataset, tokenizer

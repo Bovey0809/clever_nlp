@@ -4,7 +4,17 @@
 
 
 ```mermaid
-graph LR
+graph TD
+subgraph Training
+words["butte: xxxxx"] --> word['butte']
+word --> bert --> ori["original embeddings"]
+words --> definiton['xxxxxx']
+definiton --> tokenize --> tokens
+tokens --> Recnn['reconstruction network']
+Recnn --> pred["predicate embeddings"]
+ori-->loss["MSE loss"]
+pred-->loss
+end
 letters --> Tokens --> embeddings --> TSNE
 embeddings --> norm
 ```

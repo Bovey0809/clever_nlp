@@ -1,12 +1,12 @@
 # %%
-from transformers.data import DataCollatorWithPadding
-from torch.utils.data.dataloader import DataLoader
-from transformers.models.auto.tokenization_auto import AutoTokenizer
-from dataloader import build_dataset, word_dict
-
-from model import DictNet
-import torch
 import pandas as pd
+import torch
+from torch.utils.data.dataloader import DataLoader
+from transformers.data import DataCollatorWithPadding
+from transformers.models.auto.tokenization_auto import AutoTokenizer
+
+from dataloader import build_dataset, word_dict
+from model import DictNet
 
 
 def norm_recall(example_embeddings, original_embeddings, K=10):
@@ -14,6 +14,7 @@ def norm_recall(example_embeddings, original_embeddings, K=10):
     for embed in example_embeddings:
         distance = ((original_embeddings - embed)**2).sum(1)
         indexes = distance.argsort()[:K]
+        print("norm distance: ", distance[indexes])
         res.append(indexes)
     indexes = torch.stack(res)
     return indexes
@@ -25,8 +26,8 @@ def cosine_recall(example_embedding, original_embeddings, K=10):
     indexes = []
     for embed in example_embedding:
         cosine_similarity_of_example = cosine_sim(original_embeddings, embed)
-
         index = cosine_similarity_of_example.argsort(descending=True)[:K]
+        print("cosine distance: ", cosine_similarity_of_example[index])
         indexes.append(index)
     return torch.stack(indexes)
 
@@ -59,38 +60,45 @@ def evaluate(words, pred_embeddings, query_embeddings, tokenizer):
     return result
 
 
-# %%
-weight_path = '/diskb/houbowei/ray_results/train_2022-01-05_20-09-55/train_64e33_00107_107_batch_size=8,epochs=100,lr=0.001_2022-01-05_20-16-11/checkpoint_000098/checkpoint'
-state_dict = torch.load(weight_path)
+if __name__ == "__main__":
+    # %%
+    weight_path = '/diskb/houbowei/ray_results/train_2022-01-05_20-09-55/train_64e33_00107_107_batch_size=8,epochs=100,lr=0.001_2022-01-05_20-16-11/checkpoint_000098/checkpoint'
+    state_dict = torch.load(weight_path)
 
-model = DictNet()
-model.load_state_dict(state_dict=state_dict[0])
+    model = DictNet()
+    model.load_state_dict(state_dict=state_dict[0])
 
-eval_dataset, tokenizer = build_dataset((1.3, 2))
+    eval_dataset, tokenizer = build_dataset((0, 2))
 
-# %%
-collate_function = DataCollatorWithPadding(tokenizer)
-eval_dataloader = DataLoader(eval_dataset['train'],
-                             collate_fn=collate_function,
-                             batch_size=16)
-wordnet = pd.read_csv("./wordnet_bert_common_words.csv")
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-model.to(device)
-model.eval()
-# %%
-for inputs in eval_dataloader:
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    preds = model(**inputs)
-    words = inputs['word_ids']
-    words = tokenizer.convert_ids_to_tokens(words)
-    results = evaluate(words, preds, model.embedding_weight.to(device),
-                       tokenizer)
-    for k, v in results.items():
-        definition = str(
-            wordnet[wordnet.words == k].definition.values).strip('[]\'"')
+    # %%
+    collate_function = DataCollatorWithPadding(tokenizer)
+    eval_dataloader = DataLoader(eval_dataset['train'],
+                                 collate_fn=collate_function,
+                                 batch_size=1024)
+    wordnet = pd.read_csv("./wordnet_bert_common_words.csv")
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    model.eval()
+    # %%
+    all_words_return = []
+    for inputs in eval_dataloader:
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        preds = model(**inputs)
+        words = inputs['word_ids']
+        words = tokenizer.convert_ids_to_tokens(words)
+        results = evaluate(words, preds, model.embedding_weight.to(device),
+                           tokenizer)
+        for k, v in results.items():
+            definition = str(
+                wordnet[wordnet.words == k].definition.values).strip('[]\'"')
 
-        print(f"{k}: {definition}")
-        for recall, related_words in v.items():
-            print(f"{recall} : {related_words}")
-        print('\n')
-# %%
+            print(f"{k}: {definition}")
+            v['definition'] = definition
+            v['word'] = k
+            all_words_return.append(v)
+            for recall, related_words in v.items():
+                print(f"{recall} : {related_words}")
+            print('\n')
+    # %%
+    output_csv = pd.DataFrame(all_words_return)
+    output_csv.to_csv('wordnet_results.csv')

@@ -54,15 +54,31 @@ class DictNet(nn.Module):
     def mean_pooling(self, model_output):
         return model_output.mean(axis=1)
 
-    def forward(self, word_ids, token_type_ids, input_ids, attention_mask):
+    def forward_train(self, word_ids, token_type_ids, input_ids,
+                      attention_mask):
         # STEP1: freeze bert
 
         explanation = self.bert(token_type_ids=token_type_ids,
                                 input_ids=input_ids,
                                 attention_mask=attention_mask)[0]
         pred_embed = self.recnn(explanation)
-
         loss = F.mse_loss(
             pred_embed, self.embedding_weight[word_ids].to(pred_embed.device))
 
         return {'loss': loss, 'pred_embed': pred_embed}
+
+    def forward_test(self, word_ids, token_type_ids, input_ids,
+                     attention_mask):
+        explanation = self.bert(token_type_ids=token_type_ids,
+                                input_ids=input_ids,
+                                attention_mask=attention_mask)[0]
+        pred_embed = self.recnn(explanation)
+        return pred_embed
+
+    def forward(self, word_ids, token_type_ids, input_ids, attention_mask):
+        if self.training:
+            return self.forward_train(word_ids, token_type_ids, input_ids,
+                                      attention_mask)
+        else:
+            return self.forward_test(word_ids, token_type_ids, input_ids,
+                                     attention_mask)
