@@ -1,5 +1,5 @@
 # %%
-from datasets import load_dataset
+from datasets.load import load_dataset
 
 # %%
 raw_datasets = load_dataset("code_search_net", "python")

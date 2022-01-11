@@ -4,7 +4,7 @@ from torch.utils.data.dataloader import DataLoader
 from tqdm.auto import tqdm
 from transformers import get_scheduler
 from model import DictNet
-from dataloader import build_dataset
+from dataset import build_dataset
 from transformers import DataCollatorWithPadding
 from argparse import ArgumentParser
 
@@ -33,8 +33,8 @@ def train(config, checkpoint_dir=None):
     num_epochs = config['epochs']
 
     tokenized_dataset, tokenizer = build_dataset(range=norm_range)
-    val_dataset = tokenized_dataset.shuffle(seed=42)['train'].select(
-        range(100))
+    tokenized_dataset = tokenized_dataset.shuffle(seed=42)
+    val_dataset = tokenized_dataset['train'].select(range(100))
 
     collate_function = DataCollatorWithPadding(tokenizer)
     train_dataloader = DataLoader(tokenized_dataset['train'],
@@ -80,7 +80,7 @@ def train(config, checkpoint_dir=None):
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
-            
+
         # validation
         model.eval()
         res = {}
@@ -96,6 +96,7 @@ def train(config, checkpoint_dir=None):
         acc = sum(bert_norm > recnn_norm) / 100
         p_bar.set_description(f"acc: {acc:.4f}")
         p_bar.update(1)
+
 
 def main():
     config = dict(batch_size=8, norm_range=(0, 1.35), epochs=10, lr=1e-3)

@@ -27,3 +27,10 @@ s[\"she feed the owl"\] --> b[bert] --> e[embeddings]
 i[id] --> e --> emb[/embdding/] --> l[loss]
 ex[\owl:a bird of prey with large round eyes\] --> b --> r[recnn] --> em[/embedding/] --> l
 ```
+
+
+## Two stages for training.
+模型的训练分为两个阶段
+第一个阶段：只训练recnn。
+第二个阶段：训练embeddings
+·····

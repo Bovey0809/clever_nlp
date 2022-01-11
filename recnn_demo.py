@@ -14,7 +14,7 @@ original_norms = original_embeddings.norm(dim=1)
 
 K = 10
 
-from dataloader import word_dict
+from dataset import word_dict
 
 # %%
 wordnet = word_dict()

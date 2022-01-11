@@ -1,10 +1,7 @@
-import torch
-
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 
-from transformers import BertModel, BertTokenizer
+from transformers import BertModel
 
 
 class RecNN(nn.Module):
@@ -82,3 +79,28 @@ class DictNet(nn.Module):
         else:
             return self.forward_test(word_ids, token_type_ids, input_ids,
                                      attention_mask)
+
+
+class BertRecNN(nn.Module):
+    def __init__(self, model='bert-base-uncased', device='cuda') -> None:
+        super(BertRecNN, self).__init__()
+        self.device = device
+        self.bert = BertModel.from_pretrained(model)
+        self.freeze_weights()
+
+    def forward(self, inputs):
+        word_ids = inputs.pop('word_ids')
+        return self.bert(**inputs)
+
+    def freeze_weights(self):
+        """Only Embeddings layers should be trainable."""
+        for param in self.bert.parameters():
+            param.requires_grad = False
+        for param in self.bert.embeddings.parameters():
+            param.requires_grad = True
+
+    def get_input_embeddings(self):
+        return self.bert.embeddings.word_embeddings
+
+    def set_input_embeddings(self, value):
+        self.bert.embeddings.word_embeddings = value
