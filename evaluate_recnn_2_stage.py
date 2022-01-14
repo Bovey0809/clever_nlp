@@ -4,7 +4,7 @@ from tqdm import tqdm
 from torch.utils.data.dataloader import DataLoader
 from transformers import DataCollatorWithPadding
 
-from dataset import build_dataset
+from dataset import build_dataset, filter_words_by_norm
 from model import DictNet
 from datetime import datetime
 
@@ -59,7 +59,7 @@ def evaluate(words, pred_embeddings, query_embeddings, tokenizer):
     for word, norm_id, cos_id, ori_related_words, norm_distance, cosine_distance, original_distance in zip(
             words, norm_indexes, cos_indexes, original_res, norm_distances,
             cosine_distances, original_distances):
-        norm_res = tokenizer.convert_ids_to_tokens(norm_id)[0]
+        norm_res = tokenizer.convert_ids_to_tokens(norm_id)
         cos_res = tokenizer.convert_ids_to_tokens(cos_id)
         result[word] = {
             'norm_recall': norm_res,
@@ -75,11 +75,16 @@ def evaluate(words, pred_embeddings, query_embeddings, tokenizer):
 
 if __name__ == "__main__":
     # %%
-    weight_path = '/diskb/houbowei/ray_results/train_2022-01-05_20-09-55/train_64e33_00107_107_batch_size=8,epochs=100,lr=0.001_2022-01-05_20-16-11/checkpoint_000098/checkpoint'
-    state_dict = torch.load(weight_path)
+    dict_weight = '/diskb/houbowei/ray_results/train_2022-01-05_20-09-55/train_64e33_00107_107_batch_size=8,epochs=100,lr=0.001_2022-01-05_20-16-11/checkpoint_000098/checkpoint'
+    state_dict = torch.load(dict_weight)
 
     model = DictNet()
     model.load_state_dict(state_dict=state_dict[0])
+
+    # embeddings_weights = "./recnn_stage2_epoch_1_12012022-14-06-24.pt"
+    # embeddings_weights = torch.load(embeddings_weights).state_dict()['weight']
+
+    embeddings_weights = model.embedding_weight
 
     eval_dataset, tokenizer = build_dataset((0, 2))
 
@@ -99,7 +104,7 @@ if __name__ == "__main__":
         preds = model(**inputs).detach()
         words = inputs['word_ids']
         words = tokenizer.convert_ids_to_tokens(words)
-        results = evaluate(words, preds, model.embedding_weight.to(device),
+        results = evaluate(words, preds, embeddings_weights.to(device),
                            tokenizer)
         for k, v in results.items():
             definition = str(
@@ -116,5 +121,7 @@ if __name__ == "__main__":
     output_csv = pd.DataFrame(all_words_return)
 
     now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y-%H-%M-%S")
-    output_csv.to_csv(f'wordnet_results-{dt_string}.csv')
+    dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
+    filename = f'wordnet_results-{dt_string}.csv'
+    output_csv.to_csv(filename)
+    print(f"results save at {filename}")

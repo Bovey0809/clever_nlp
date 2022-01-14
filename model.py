@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -88,15 +89,40 @@ class BertRecNN(nn.Module):
         self.bert = BertModel.from_pretrained(model)
         self.freeze_weights()
 
-    def forward(self, inputs):
-        word_ids = inputs.pop('word_ids')
-        return self.bert(**inputs)
+    def forward(self, bert_inputs, target_position):
+        """
+        forward Stage 2 forward function.
+
+        1. Freeze all layers in Bert except embeddings.
+        2. Extract last hidden layer.
+        3. Select specific position words according to norm range.
+
+        Args:
+            bert_inputs (dict): original bert inputs with word ids.
+            target_position (list[int]): word position in the inputs'id.
+
+        Returns:
+            bert_output: Last layer's output vector.
+            word_ids: Vector ids.
+        """
+        input_ids = bert_inputs['input_ids']
+        last_hidden_state = self.bert(**bert_inputs)['last_hidden_state']
+        bert_output_vectors = []
+        # Word ids is the id in vocabulary.
+        word_ids = []
+        for batch_id, output in enumerate(last_hidden_state):
+            position = target_position[batch_id]
+            bert_output_vectors.append(output[position])
+            word_id = input_ids[batch_id][position]
+            word_ids.append(word_id)
+        bert_output_vectors = torch.cat(bert_output_vectors)
+        return bert_output_vectors, word_ids
 
     def freeze_weights(self):
         """Only Embeddings layers should be trainable."""
         for param in self.bert.parameters():
             param.requires_grad = False
-        for param in self.bert.embeddings.parameters():
+        for param in self.bert.embeddings.word_embeddings.parameters():
             param.requires_grad = True
 
     def get_input_embeddings(self):
