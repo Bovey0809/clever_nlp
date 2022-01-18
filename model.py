@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import pytorch_lightning as pl
 from transformers import BertModel
 
 
@@ -14,7 +14,6 @@ class RecNN(nn.Module):
         self.l2 = nn.Linear(in_features, in_features)
         self.bn2 = nn.BatchNorm1d(in_features)
         self.act2 = nn.GELU()
-
         self.pool = nn.AvgPool1d(kernel_size=1, padding=0, stride=1)
 
     def forward(self, embeddings):
@@ -45,6 +44,12 @@ class DictNet(nn.Module):
         self.bert = BertModel.from_pretrained(model)
         self.embedding_weight = self.bert.embeddings.state_dict(
         )['word_embeddings.weight']
+        # Normalization for embeddings
+        normalized_embedding_weights = dict(
+            weight=(self.embedding_weight - self.embedding_weight.mean()) /
+            self.embedding_weight.std())
+        self.bert.embeddings.word_embeddings.load_state_dict(
+            normalized_embedding_weights)
         self.recnn = RecNN()
         for param in self.bert.parameters():
             param.requires_grad = False
@@ -59,6 +64,7 @@ class DictNet(nn.Module):
         explanation = self.bert(token_type_ids=token_type_ids,
                                 input_ids=input_ids,
                                 attention_mask=attention_mask)[0]
+
         pred_embed = self.recnn(explanation)
         loss = F.mse_loss(
             pred_embed, self.embedding_weight[word_ids].to(pred_embed.device))

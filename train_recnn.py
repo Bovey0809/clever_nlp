@@ -72,7 +72,7 @@ def train(config, checkpoint_dir=None):
     p_bar = tqdm(total=num_epochs)
     for epoch in range(num_epochs):
         model.train()
-        for batch in train_dataloader:
+        for step, batch in enumerate(train_dataloader):
             batch = {k: v.to(device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs['loss']
@@ -80,26 +80,28 @@ def train(config, checkpoint_dir=None):
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
-
-        # validation
-        model.eval()
-        res = {}
-        for batch in val_dataloader:
-            batch = {k: v.to(device) for k, v in batch.items()}
-            pred_embed = model(**batch)
-            res[int(batch['word_ids'].item())] = pred_embed.detach().cpu()
-        # calculate embeddings
-        bert_norm = model.embedding_weight[list(res.keys())].norm(dim=1)
-        # %%
-        recnn_norm = torch.cat(list(res.values())).norm(dim=1)
-        # %%
-        acc = sum(bert_norm > recnn_norm) / 100
-        p_bar.set_description(f"acc: {acc:.4f}")
+            if step % 10 == 0:
+                p_bar.set_description(f"loss: {loss}")
         p_bar.update(1)
+        # # validation
+        # model.eval()
+        # res = {}
+        # for batch in val_dataloader:
+        #     batch = {k: v.to(device) for k, v in batch.items()}
+        #     pred_embed = model(**batch)
+        #     res[int(batch['word_ids'].item())] = pred_embed.detach().cpu()
+        # # calculate embeddings
+        # bert_norm = model.embedding_weight[list(res.keys())].norm(dim=1)
+        # # %%
+        # recnn_norm = torch.cat(list(res.values())).norm(dim=1)
+        # # %%
+        # acc = sum(bert_norm > recnn_norm) / 100
+        # p_bar.set_description(f"acc: {acc:.4f}")
+        # p_bar.update(1)
 
 
 def main():
-    config = dict(batch_size=8, norm_range=(0, 1.35), epochs=10, lr=1e-3)
+    config = dict(batch_size=8, norm_range=(0, 1.35), epochs=200, lr=1e-3)
     train(config)
 
 

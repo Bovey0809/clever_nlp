@@ -3,7 +3,6 @@ import torch
 from tqdm import tqdm
 from torch.utils.data.dataloader import DataLoader
 from transformers import DataCollatorWithPadding
-
 from dataset import build_dataset
 from model import DictNet
 from datetime import datetime
@@ -59,7 +58,7 @@ def evaluate(words, pred_embeddings, query_embeddings, tokenizer):
     for word, norm_id, cos_id, ori_related_words, norm_distance, cosine_distance, original_distance in zip(
             words, norm_indexes, cos_indexes, original_res, norm_distances,
             cosine_distances, original_distances):
-        norm_res = tokenizer.convert_ids_to_tokens(norm_id)[0]
+        norm_res = tokenizer.convert_ids_to_tokens(norm_id)
         cos_res = tokenizer.convert_ids_to_tokens(cos_id)
         result[word] = {
             'norm_recall': norm_res,
@@ -75,7 +74,9 @@ def evaluate(words, pred_embeddings, query_embeddings, tokenizer):
 
 if __name__ == "__main__":
     # %%
+    # weight_path = '/diskb/houbowei/ray_results/train_2022-01-05_20-09-55/train_64e33_00107_107_batch_size=8,epochs=100,lr=0.001_2022-01-05_20-16-11/checkpoint_000098/checkpoint'
     weight_path = '/diskb/houbowei/ray_results/train_2022-01-05_20-09-55/train_64e33_00107_107_batch_size=8,epochs=100,lr=0.001_2022-01-05_20-16-11/checkpoint_000098/checkpoint'
+
     state_dict = torch.load(weight_path)
 
     model = DictNet()
@@ -116,5 +117,6 @@ if __name__ == "__main__":
     output_csv = pd.DataFrame(all_words_return)
 
     now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y-%H-%M-%S")
+    dt_string = now.strftime("%d%m%Y-%H-%M-%S")
     output_csv.to_csv(f'wordnet_results-{dt_string}.csv')
+    print(f'wordnet_results-{dt_string}.csv')

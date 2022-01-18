@@ -71,15 +71,6 @@ def build_dataset(range=(0, 1.233141)) -> tuple:
     return tokenized_dataset, tokenizer
 
 
-def filter_words_by_norm(norm_range=(0, 1.2)):
-    data = pd.read_csv("wordnet_bert_common_words.csv")
-    words = data[data.norms.apply(
-        lambda x: norm_range[0] < x < norm_range[1])].words.values
-    words = set(words.tolist())
-    print(f">>>> There are {len(words)} words between norm range {norm_range}")
-    return words
-
-
 def build_embeddings_dataset(norm_range=(0, 1.233141)):
     """
     Build dataset for embeddings.
