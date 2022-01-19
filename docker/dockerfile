@@ -1,0 +1,9 @@
+FROM nvcr.io/nvidia/pytorch:21.11-py3
+
+COPY *.py ./
+
+COPY *.csv ./
+
+COPY *.txt ./
+
+RUN pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple

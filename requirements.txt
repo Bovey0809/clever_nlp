@@ -1,0 +1,5 @@
+transformers
+datasets
+pytorch-lightning
+ray
+ray[tune]

@@ -5,7 +5,7 @@ from datasets import load_dataset
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 
-def word_dict(data_dir="/diskb/houbowei/clever_nlp/core-wordnet.txt") -> dict:
+def word_dict(data_dir="core-wordnet.txt") -> dict:
     data_files = data_dir
 
     def _parse_words(words: list):
@@ -29,7 +29,7 @@ def word_dict(data_dir="/diskb/houbowei/clever_nlp/core-wordnet.txt") -> dict:
 
 
 def nltk_dataset(
-        filepath='/diskb/houbowei/clever_nlp/wordnet_bert_common_words.csv'):
+        filepath='wordnet_bert_common_words.csv'):
     '''Read csv file and return nltk dataset.
     '''
     dataset = load_dataset('csv', data_files=filepath)
