@@ -1,3 +1,4 @@
+import datasets
 import pandas as pd
 from torch.utils.data.dataloader import DataLoader
 from datasets import load_dataset
@@ -196,7 +197,10 @@ def build_xinhua_dataset(xinhua_dict="data/xinhua2.csv",
 
 def build_xinhua_dataloader(batch_size, num_workers=8):
 
-    tokenized_dataset, tokenizer = build_xinhua_dataset()
+    # tokenized_dataset, tokenizer = build_xinhua_dataset()
+    tokenized_dataset = datasets.load_from_disk("data/xinhua_dataset/")
+    tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-bert-wwm-ext")
+
     tokenized_dataset = tokenized_dataset.remove_columns(
         ['definition', 'word'])
     tokenized_dataset = tokenized_dataset.shuffle(seed=42)
