@@ -1,7 +1,11 @@
 import pandas as pd
-
+from torch.utils.data.dataloader import DataLoader
 from datasets import load_dataset
+from transformers import DataCollatorWithPadding
 
+import pandas as pd
+import random
+import torch
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 
@@ -127,9 +131,7 @@ def build_embeddings_dataset(norm_range=(0, 1.233141)):
     tokenized_dataset = dataset.map(_target_word_position)
     tokenized_dataset = tokenized_dataset.remove_columns(
         ['definition', 'words', 'embeddings_ids', 'norms', 'word_ids'])
-    # tokenized_dataset.set_format(
-    #     "torch",
-    #     columns=['word_ids', 'input_ids', 'token_type_ids', 'attention_mask'])
+
     return tokenized_dataset, tokenizer
 
 
@@ -138,12 +140,41 @@ def build_xinhua_dataset(xinhua_dict="data/xinhua2.csv",
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
     vocab = tokenizer.vocab
 
+    xinhua_words = pd.read_csv(xinhua_dict)
+
+    xinhua_words = xinhua_words.word.values
+
+    xinhua_words = set(xinhua_words)
+
+    vocab = tokenizer.vocab
+
+    vocab = set(vocab.keys())
+
+    clean_xinhua = []
+
+    def _all_true(word):
+        for ch in word:
+            if ch not in vocab:
+                return False
+        return True
+
+    for word in xinhua_words:
+        if _all_true(word):
+            clean_xinhua.append(word)
+    clean_xinhua = set(clean_xinhua)
+
     def _filter_unk(x):
         for word in x.values():
             for ch in word:
                 if ch not in vocab:
                     return False
         return True
+
+    def _filter_word(x):
+        word = x['word']
+        if word in clean_xinhua:
+            return True
+        return False
 
     def _map_function(example):
         definition = example['definition']
@@ -153,9 +184,42 @@ def build_xinhua_dataset(xinhua_dict="data/xinhua2.csv",
         inputs['word_ids'] = word_ids
         return inputs
 
-    xinhua_dataset = load_dataset(
-        'csv', data_files=[xinhua_dict]).remove_columns('Unnamed: 0')
+    xinhua_dataset = load_dataset('csv',
+                                  data_files=[xinhua_dict
+                                              ]).remove_columns('Unnamed: 0')
 
     xinhua_dataset = xinhua_dataset.filter(_filter_unk)
-    xinhua_dataset = xinhua_dataset.map(_map_function)
+    xinhua_dataset = xinhua_dataset.filter(_filter_word)
+    xinhua_dataset = xinhua_dataset.map(_map_function, batched=False)
     return xinhua_dataset, tokenizer
+
+
+def build_xinhua_dataloader(batch_size, num_workers=8):
+
+    tokenized_dataset, tokenizer = build_xinhua_dataset()
+    tokenized_dataset = tokenized_dataset.remove_columns(
+        ['definition', 'word'])
+    tokenized_dataset = tokenized_dataset.shuffle(seed=42)
+    val_dataset = tokenized_dataset['train'].select(range(100))
+    padding_fn = DataCollatorWithPadding(tokenizer, padding=True)
+
+    def _collate_fn(batch):
+        target_indexes = []
+        for i in batch:
+            target_index = i.pop('word_ids')
+            target_indexes.append(torch.tensor(target_index))
+        res = padding_fn(batch)
+        return res, target_indexes
+
+    train_dataloader = DataLoader(tokenized_dataset['train'],
+                                  shuffle=False,
+                                  batch_size=batch_size,
+                                  collate_fn=_collate_fn,
+                                  num_workers=num_workers)
+
+    val_dataloader = DataLoader(val_dataset,
+                                shuffle=False,
+                                batch_size=1,
+                                collate_fn=_collate_fn,
+                                num_workers=num_workers)
+    return train_dataloader, val_dataloader

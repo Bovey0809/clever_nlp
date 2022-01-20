@@ -157,7 +157,11 @@ class ChineseDictNet(DictNet):
         pred_embed = self.recnn(explanation)
 
         # Chinese seperate sentence into words
-        chinese_word_embeddings = self.embedding_weight[word_ids].mean(
-            axis=1).to(pred_embed.device)
+        chinese_word_embeddings = []
+        for word_id in word_ids:
+            chinese_word_embedding = self.embedding_weight[word_id].mean(
+                axis=0)
+            chinese_word_embeddings.append(chinese_word_embedding)
+        chinese_word_embeddings = torch.stack(chinese_word_embeddings).to(pred_embed.device)
         loss = F.mse_loss(pred_embed, chinese_word_embeddings)
         return {'loss': loss, 'pred_embed': pred_embed}
