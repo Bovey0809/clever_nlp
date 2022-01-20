@@ -209,7 +209,8 @@ def build_xinhua_dataloader(batch_size, num_workers=8):
             target_index = i.pop('word_ids')
             target_indexes.append(torch.tensor(target_index))
         res = padding_fn(batch)
-        return res, target_indexes
+        res['word_ids'] = target_indexes
+        return res
 
     train_dataloader = DataLoader(tokenized_dataset['train'],
                                   shuffle=False,

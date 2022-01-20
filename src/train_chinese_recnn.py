@@ -56,9 +56,9 @@ def train(config, checkpoint_dir=None):
     p_bar = tqdm(total=num_epochs)
     for epoch in range(num_epochs):
         model.train()
-        for step, (batch, word_ids) in enumerate(train_dataloader):
+        for step, batch in enumerate(train_dataloader):
             batch = {k: v.to(device) for k, v in batch.items()}
-            outputs = model(word_ids=word_ids, **batch)
+            outputs = model(**batch)
             loss = outputs['loss']
             loss.backward()
             optimizer.step()
