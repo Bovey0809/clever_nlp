@@ -28,8 +28,7 @@ def word_dict(data_dir="core-wordnet.txt") -> dict:
     return wordnet
 
 
-def nltk_dataset(
-        filepath='wordnet_bert_common_words.csv'):
+def nltk_dataset(filepath='data/wordnet_bert_common_words.csv'):
     '''Read csv file and return nltk dataset.
     '''
     dataset = load_dataset('csv', data_files=filepath)
@@ -132,3 +131,31 @@ def build_embeddings_dataset(norm_range=(0, 1.233141)):
     #     "torch",
     #     columns=['word_ids', 'input_ids', 'token_type_ids', 'attention_mask'])
     return tokenized_dataset, tokenizer
+
+
+def build_xinhua_dataset(xinhua_dict="data/xinhua2.csv",
+                         checkpoint="hfl/chinese-bert-wwm-ext"):
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+    vocab = tokenizer.vocab
+
+    def _filter_unk(x):
+        for word in x.values():
+            for ch in word:
+                if ch not in vocab:
+                    return False
+        return True
+
+    def _map_function(example):
+        definition = example['definition']
+        inputs = tokenizer(definition)
+        word = example['word']
+        word_ids = tokenizer.convert_tokens_to_ids([*word])
+        inputs['word_ids'] = word_ids
+        return inputs
+
+    xinhua_dataset = load_dataset(
+        'csv', data_files=[xinhua_dict]).remove_columns('Unnamed: 0')
+
+    xinhua_dataset = xinhua_dataset.filter(_filter_unk)
+    xinhua_dataset = xinhua_dataset.map(_map_function)
+    return xinhua_dataset, tokenizer

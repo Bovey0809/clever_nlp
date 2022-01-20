@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
-from transformers import BertModel
+
+from transformers import BertModel, AutoModel
 
 
 class RecNN(nn.Module):
+
     def __init__(self, in_features=768) -> None:
         super(RecNN, self).__init__()
         self.l1 = nn.Linear(in_features, in_features)
@@ -38,6 +39,7 @@ class RecNN(nn.Module):
 
 class DictNet(nn.Module):
     """Some Information about CleverNLP"""
+
     def __init__(self, model='bert-base-uncased', device='cuda'):
         super(DictNet, self).__init__()
         self.device = device
@@ -89,6 +91,7 @@ class DictNet(nn.Module):
 
 
 class BertRecNN(nn.Module):
+
     def __init__(self, model='bert-base-uncased', device='cuda') -> None:
         super(BertRecNN, self).__init__()
         self.device = device
@@ -136,3 +139,25 @@ class BertRecNN(nn.Module):
 
     def set_input_embeddings(self, value):
         self.bert.embeddings.word_embeddings = value
+
+
+class ChineseDictNet(DictNet):
+
+    def __init__(self,
+                 model="hfl/chinese-bert-wwm-ext",
+                 device='cuda') -> None:
+        super(ChineseDictNet, self).__init__(model=model, device=device)
+
+    def forward_train(self, word_ids, token_type_ids, input_ids,
+                      attention_mask):
+        explanation = self.bert(token_type_ids=token_type_ids,
+                                input_ids=input_ids,
+                                attention_mask=attention_mask)[0]
+
+        pred_embed = self.recnn(explanation)
+
+        # Chinese seperate sentence into words
+        chinese_word_embeddings = self.embedding_weight[word_ids].mean(
+            axis=1).to(pred_embed.device)
+        loss = F.mse_loss(pred_embed, chinese_word_embeddings)
+        return {'loss': loss, 'pred_embed': pred_embed}

@@ -1,9 +1,9 @@
 FROM nvcr.io/nvidia/pytorch:21.11-py3
 
-COPY ../*.py ./
+COPY src ./
 
-COPY ../*.csv ./
+COPY data ./
 
-COPY ../*.txt ./
+COPY requirements.txt ./
 
 RUN pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
