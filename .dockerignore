@@ -1,0 +1,4 @@
+weights/
+lightning_logs/
+__pycache__/
+results/
